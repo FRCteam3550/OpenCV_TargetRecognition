@@ -29,7 +29,7 @@ public class main {
 	        System.out.println("Camera Error");
 	    }
 	    else{
-	        System.out.println("Camera OK?");
+	        System.out.println("Camera OK!");
 	    }
 		Mat srcImage = new Mat();
 		camera.read(srcImage);
@@ -47,19 +47,31 @@ public class main {
 			//Core.multiply(hsvOverlay, new Scalar(0.3, 1, 1), hsvOverlay);
 			//Nous allons utiliser le maintenant inutile hsvImage comme Mat de swap...
 			Imgproc.cvtColor(hsvOverlay, hsvImage, Imgproc.COLOR_GRAY2BGR);
-			Core.multiply(srcImage, hsvImage, srcImage);
 			List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
 			Imgproc.findContours(hsvOverlay, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
-			//Dessiner les contours...
 			//Core.multiply(srcImage, new Scalar(0,0,0), srcImage);
+//			//Appliquer le masque...
+//			//Imgproc.cvtColor(hsvOverlay, hsvOverlay, Imgproc.COLOR_GRAY2BGR);
+//			//Core.bitwise_and(srcImage, hsvOverlay, srcImage);
+			List<MatOfInt> convexhulls = new ArrayList<MatOfInt>();
+			List<Double> orientations = new ArrayList<Double>();
+//			//Dessiner les rectangles
 			for (int i = 0; i < contours.size(); i++) {
-				//Trier les contours qui ont une bounding box
+		    	Imgproc.drawContours(srcImage, contours, i, new Scalar(255, 255, 255), -1);
+//				//Trier les contours qui ont une bounding box
+//				Imgproc.convexHull(contours.get(i), convexhulls.get(i));
+//				double contourSolidity = Imgproc.contourArea(contours.get(i))/Imgproc.contourArea(convexhulls.get(i));
 				if (Imgproc.contourArea(contours.get(i)) > 2000){
-					Rect rect = Imgproc.boundingRect(contours.get(i));
-					Imgproc.rectangle(srcImage, new Point(rect.x,rect.y),
-					new Point(rect.x+rect.width,rect.y+rect.height), new Scalar(255, 0, 0, 255), 3); 
+					MatOfPoint2f points = new MatOfPoint2f(contours.get(i).toArray());
+					RotatedRect rRect = Imgproc.minAreaRect(points);
+
+			        Point[] vertices = new Point[4];  
+			        rRect.points(vertices);  
+			        for (int j = 0; j < 4; j++){ //Dessiner un rectangle avec rotation..
+			            Imgproc.line(srcImage, vertices[j], vertices[(j+1)%4], new Scalar(0,255,0), 10);
+			        }
+					orientations.add(3.0);
 				}
-			    Imgproc.drawContours(srcImage, contours, i, new Scalar(0, 0, 255), -1);
 			}
 			display.update(srcImage);
 		}
