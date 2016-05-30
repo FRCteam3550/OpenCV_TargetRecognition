@@ -15,11 +15,15 @@ import org.opencv.core.*;
 import org.opencv.imgcodecs.*;
 import org.opencv.imgproc.*;
 import org.opencv.videoio.VideoCapture;
+import org.opencv.videoio.Videoio;
 
 import Rbtx.vision.ui.OpenCVMatDisplay;
+import Rbtx.vision.ui.OpenCVSliderDisplay;
 
 public class main {
 	static BufferedImage output;
+	static double timeSinceLastUpdate;
+	
 	public static void main(String[] args) {
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		
@@ -31,6 +35,7 @@ public class main {
 	    else{
 	        System.out.println("Camera OK!");
 	    }
+	    camera.set(Videoio.CAP_PROP_FRAME_COUNT, 30);
 		Mat srcImage = new Mat();
 		camera.read(srcImage);
 		Mat hsvImage = new Mat();
@@ -38,11 +43,14 @@ public class main {
 		Mat hsvOverlay = new Mat(3,3,0);
 		camera.read(hsvOverlay);
 		OpenCVMatDisplay display = new OpenCVMatDisplay(srcImage);
+		OpenCVSliderDisplay sliders = new OpenCVSliderDisplay();
+		double time = System.nanoTime();
 		while (true){
+			time = System.nanoTime() / 1000000;
 			camera.read(srcImage);
-			Imgproc.medianBlur(srcImage, srcImage, 3);
+			//Imgproc.blur(srcImage, srcImage, new Size(3, 3));
 			Imgproc.cvtColor(srcImage, hsvImage, Imgproc.COLOR_BGR2HSV);
-			Core.inRange(hsvImage, new Scalar(75, 60, 60), new Scalar(97, 255, 255), hsvOverlay); // Valeur pour le tape
+			Core.inRange(hsvImage, sliders.getSliderValue(0), sliders.getSliderValue(1), hsvOverlay); // Valeur pour le tape
 			//Core.multiply(hsvOverlay, new Scalar(0.75, 0.75, 0.75), hsvOverlay);
 			//Core.multiply(hsvOverlay, new Scalar(0.3, 1, 1), hsvOverlay);
 			//Nous allons utiliser le maintenant inutile hsvImage comme Mat de swap...
@@ -53,15 +61,16 @@ public class main {
 //			//Appliquer le masque...
 //			//Imgproc.cvtColor(hsvOverlay, hsvOverlay, Imgproc.COLOR_GRAY2BGR);
 //			//Core.bitwise_and(srcImage, hsvOverlay, srcImage);
-			List<MatOfInt> convexhulls = new ArrayList<MatOfInt>();
+			List<MatOfInt> convexhulls = new ArrayList<MatOfInt>(contours.size());
 			List<Double> orientations = new ArrayList<Double>();
 //			//Dessiner les rectangles
 			for (int i = 0; i < contours.size(); i++) {
-		    	Imgproc.drawContours(srcImage, contours, i, new Scalar(255, 255, 255), -1);
 //				//Trier les contours qui ont une bounding box
-//				Imgproc.convexHull(contours.get(i), convexhulls.get(i));
-//				double contourSolidity = Imgproc.contourArea(contours.get(i))/Imgproc.contourArea(convexhulls.get(i));
+				convexhulls.add(i, new MatOfInt(6));
 				if (Imgproc.contourArea(contours.get(i)) > 2000){
+					Imgproc.convexHull(contours.get(i), convexhulls.get(i));
+					double contourSolidity = Imgproc.contourArea(contours.get(i))/Imgproc.contourArea(convexhulls.get(i));
+					Imgproc.drawContours(srcImage, contours, i, new Scalar(255, 255, 255), -1);
 					MatOfPoint2f points = new MatOfPoint2f(contours.get(i).toArray());
 					RotatedRect rRect = Imgproc.minAreaRect(points);
 
@@ -71,9 +80,13 @@ public class main {
 			            Imgproc.line(srcImage, vertices[j], vertices[(j+1)%4], new Scalar(0,255,0), 10);
 			        }
 					orientations.add(3.0);
+					System.out.println(contourSolidity);
 				}
 			}
+			sliders.updateTextField();
 			display.update(srcImage);
+			timeSinceLastUpdate = System.nanoTime() / 1000000 - time;
+			System.out.println(timeSinceLastUpdate);
 		}
 	}
 }
